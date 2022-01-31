@@ -10,7 +10,7 @@ const todos: Array<Todo> = todoStorage.get()
 
 function getTodoHTML(todo: Todo): string {
   return `	
-  <li class="${todo.completed ? 'completed' : ''}">
+  <li class="todo-item ${todo.completed ? 'completed' : ''}">
     <div class="view">
       <input class="toggle" type="checkbox" ${todo.completed ? 'cheked' : ''} />
       <label>${todo.name}</label>
@@ -50,7 +50,7 @@ input.addEventListener('keydown', (event: KeyboardEvent): void => {
 list.addEventListener('click', (event: MouseEvent): void => {
   const clickedEl = event.target as HTMLElement
   // Toggle completed state of todo
-  if (clickedEl.tagName == 'INPUT') {
+  if (clickedEl.classList.contains('toggle')) {
     const toggleCompletedInput = clickedEl as HTMLInputElement
     const todoItemEL = toggleCompletedInput.closest('li')!
     const todoName = todoItemEL.innerText
@@ -78,5 +78,57 @@ list.addEventListener('click', (event: MouseEvent): void => {
     todos.splice(todoIndex, 1)
     todoStorage.update(todos)
     todoItemEL.remove()
+  }
+
+})
+
+list.addEventListener('dblclick', (event: MouseEvent): void => {
+  const clickedEl = event.target as HTMLElement
+  // Update todo
+  if (clickedEl.tagName == 'LABEL') {
+    const labelEl = clickedEl as HTMLLabelElement
+    const todoItemEL = labelEl.closest('li')!
+    console.log(document.querySelectorAll('.editing'))
+    const editingEls = document.querySelectorAll('.editing') 
+    editingEls.forEach(element => element.classList.remove('editing'))
+    todoItemEL.classList.add('editing')
+    // todoItemEL.contentEditable = 'true'
+    // console.log('Edit')
+  }
+})
+
+function cancelEditMode(): void {
+  const editingTodoItems = document.querySelectorAll('.editing')
+  editingTodoItems.forEach((item: HTMLLIElement) =>{
+    const labelEl = item.querySelector('label') as HTMLLabelElement
+    const editEl = item.querySelector('.edit') as HTMLInputElement
+    item.classList.remove('editing')
+    editEl.value = labelEl.innerText
+  })
+}
+
+function saveEdit(): void {
+  const editingTodoItem = document.querySelector('.editing')
+  if (editingTodoItem) {
+    const labelEl = editingTodoItem.querySelector('label')
+    const editEl = editingTodoItem.querySelector('.edit') as HTMLInputElement
+    const oldName = labelEl.innerText
+    const todo = todos.find(todo => todo.name == oldName)
+
+    // Update new todo
+    todo.name = editEl.value
+    todoStorage.update(todos)
+    labelEl.innerText = editEl.value
+    editingTodoItem.classList.remove('editing')
+  }
+}
+
+addEventListener('keydown', (event: KeyboardEvent) => {
+  if (event.key == 'Escape') {
+    cancelEditMode()
+  }
+
+  if (event.key == 'Enter') {
+    saveEdit()
   }
 })
