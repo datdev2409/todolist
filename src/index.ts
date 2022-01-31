@@ -6,15 +6,22 @@ interface Todo {
 }
 
 const todoStorage = createStorage('TODO')
-const todos: Array<Todo> = todoStorage.get()
+let todos: Array<Todo> = todoStorage.get()
 
 function getTodoHTML(todo: Todo): string {
   return `	
-  <li class="todo-item ${todo.completed ? 'completed' : ''}">
+  <li draggable="true" class="todo-item ${todo.completed ? 'completed' : ''}">
     <div class="view">
-      <input class="toggle" type="checkbox" ${todo.completed ? 'cheked' : ''} />
+      <input class="toggle" type="checkbox" ${todo.completed ? 'checked' : ''}/>
       <label>${todo.name}</label>
-      <button class="destroy"></button>
+      <div class="control">
+        <button class="editing-btn">
+          <ion-icon name="create-outline"></ion-icon>
+        </button>
+        <button class="destroy">
+          <ion-icon name="trash-outline"></ion-icon>
+        </button>
+      </div>
     </div>
     <input class="edit" value="${todo.name}" />
   </li>
@@ -26,10 +33,21 @@ function renderTodoList(todos: Todo[], listEl: HTMLUListElement): void {
   listEl.innerHTML = htmlItems
 }
 
+function getItemLeft(): number {
+  const itemLeft = todos.reduce((count: number, todo: Todo) => {
+    return todo.completed ? count : count + 1
+  }, 0)
+  return itemLeft
+}
+
 const input = document.querySelector('.new-todo') as HTMLInputElement
 const list = document.querySelector('.todo-list') as HTMLUListElement
+const countEl = document.querySelector('.todo-count') as HTMLSpanElement
+const filterBtns = document.querySelectorAll('.filters>li') as NodeListOf<HTMLLIElement>
+const clearBtn = document.querySelector('.clear-completed') as HTMLButtonElement
 
 renderTodoList(todos, list)
+countEl.innerText = `${getItemLeft()} item left`
 
 input.addEventListener('keydown', (event: KeyboardEvent): void => {
   if (event.key == 'Enter') {
@@ -65,11 +83,12 @@ list.addEventListener('click', (event: MouseEvent): void => {
       todo.completed = false
     }
 
+    countEl.innerText = `${getItemLeft()} item left`
     todoStorage.update(todos)
   }
 
   // Delete todo
-  if (clickedEl.classList.contains('destroy')) {
+  if (clickedEl.parentElement.classList.contains('destroy')) {
     const deleteBtn = clickedEl as HTMLButtonElement
     const todoItemEL = deleteBtn.closest('li')!
     const todoName = todoItemEL.innerText
@@ -78,8 +97,24 @@ list.addEventListener('click', (event: MouseEvent): void => {
     todos.splice(todoIndex, 1)
     todoStorage.update(todos)
     todoItemEL.remove()
+    countEl.innerText = `${getItemLeft()} item left`
   }
+  console.log(clickedEl)
 
+  // Update todo
+  if (clickedEl.parentElement.classList.contains('editing-btn')) {
+    const labelEl = clickedEl as HTMLLabelElement
+    const todoItemEL = labelEl.closest('li')!
+    const inputEl = todoItemEL.querySelector('.edit') as HTMLInputElement
+    console.log(document.querySelectorAll('.editing'))
+    const editingEls = document.querySelectorAll('.editing') 
+    editingEls.forEach(element => element.classList.remove('editing'))
+    todoItemEL.classList.add('editing')
+    inputEl.focus()
+    // Move the cursor to the end
+    const length = inputEl.value.length
+    inputEl.setSelectionRange(length, length)
+  }
 })
 
 list.addEventListener('dblclick', (event: MouseEvent): void => {
@@ -88,12 +123,12 @@ list.addEventListener('dblclick', (event: MouseEvent): void => {
   if (clickedEl.tagName == 'LABEL') {
     const labelEl = clickedEl as HTMLLabelElement
     const todoItemEL = labelEl.closest('li')!
-    console.log(document.querySelectorAll('.editing'))
+    const inputEl = todoItemEL.querySelector('.edit') as HTMLInputElement
     const editingEls = document.querySelectorAll('.editing') 
     editingEls.forEach(element => element.classList.remove('editing'))
     todoItemEL.classList.add('editing')
-    // todoItemEL.contentEditable = 'true'
-    // console.log('Edit')
+    inputEl.focus()
+    console.log(inputEl)
   }
 })
 
@@ -132,3 +167,33 @@ addEventListener('keydown', (event: KeyboardEvent) => {
     saveEdit()
   }
 })
+
+function filterTodo(filter: string) {
+  if (filter == 'completed') 
+    return todos.filter(todo => todo.completed)
+  else if (filter == 'active') 
+    return todos.filter(todo => !todo.completed)
+  return todos;
+}
+
+function clearCompletedTodos() {
+  todos = todos.filter(todo => !todo.completed)
+  todoStorage.update(todos)
+  renderTodoList(todos, list)
+}
+
+filterBtns.forEach(btn => {
+  btn.onclick = (event: MouseEvent) => {
+    // Remove selected 
+    const selectedEl = document.querySelectorAll('.selected')!
+    selectedEl.forEach(el => el.classList.remove('selected'))
+
+    const clickedEl = event.target as HTMLAnchorElement
+    clickedEl.classList.add('selected')
+
+    const newTodos = filterTodo(clickedEl.innerText.toLowerCase())
+    renderTodoList(newTodos, list)
+  }
+})
+
+clearBtn.onclick = clearCompletedTodos
